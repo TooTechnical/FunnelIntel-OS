@@ -3,6 +3,131 @@ import { appRouter } from "./routers";
 import { COOKIE_NAME } from "../shared/const";
 import type { TrpcContext } from "./_core/context";
 
+// ─── aiHelpers: checkCanGenerate ─────────────────────────────────────────────
+
+describe("checkCanGenerate (aiHelpers)", () => {
+  it("allows generation for active subscribers", async () => {
+    const { checkCanGenerate } = await import("./aiHelpers");
+    expect(checkCanGenerate({ subscriptionStatus: "active", trialEndsAt: null })).toBe(true);
+  });
+
+  it("allows generation during active trial", async () => {
+    const { checkCanGenerate } = await import("./aiHelpers");
+    const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    expect(checkCanGenerate({ subscriptionStatus: "trial", trialEndsAt: futureDate })).toBe(true);
+  });
+
+  it("blocks generation for expired trial", async () => {
+    const { checkCanGenerate } = await import("./aiHelpers");
+    const pastDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    expect(checkCanGenerate({ subscriptionStatus: "trial", trialEndsAt: pastDate })).toBe(false);
+  });
+
+  it("blocks generation for expired subscription", async () => {
+    const { checkCanGenerate } = await import("./aiHelpers");
+    expect(checkCanGenerate({ subscriptionStatus: "expired", trialEndsAt: null })).toBe(false);
+  });
+
+  it("blocks generation for cancelled subscription", async () => {
+    const { checkCanGenerate } = await import("./aiHelpers");
+    expect(checkCanGenerate({ subscriptionStatus: "cancelled", trialEndsAt: null })).toBe(false);
+  });
+
+  it("blocks generation when trial but trialEndsAt is null", async () => {
+    const { checkCanGenerate } = await import("./aiHelpers");
+    expect(checkCanGenerate({ subscriptionStatus: "trial", trialEndsAt: null })).toBe(false);
+  });
+});
+
+// ─── Zod Output Schemas ───────────────────────────────────────────────────────
+
+describe("IntelligenceSchema", () => {
+  it("parses minimal object with defaults", async () => {
+    const { IntelligenceSchema } = await import("./aiHelpers");
+    const result = IntelligenceSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.current_state).toEqual([]);
+      expect(result.data.confidence_score).toBe(5);
+      expect(result.data.awareness_level).toBe("problem_aware");
+    }
+  });
+
+  it("rejects invalid awareness_level", async () => {
+    const { IntelligenceSchema } = await import("./aiHelpers");
+    const result = IntelligenceSchema.safeParse({ awareness_level: "fully_aware" });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("AwarenessSchema", () => {
+  it("parses with defaults", async () => {
+    const { AwarenessSchema } = await import("./aiHelpers");
+    const result = AwarenessSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.awareness_level).toBe("problem_aware");
+    }
+  });
+
+  it("accepts all valid awareness levels", async () => {
+    const { AwarenessSchema } = await import("./aiHelpers");
+    for (const level of ["unaware", "problem_aware", "solution_aware", "product_aware"]) {
+      expect(AwarenessSchema.safeParse({ awareness_level: level }).success).toBe(true);
+    }
+  });
+});
+
+describe("ThresholdSchema", () => {
+  it("parses with defaults", async () => {
+    const { ThresholdSchema } = await import("./aiHelpers");
+    const result = ThresholdSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.biggest_gap).toBe("desire");
+    }
+  });
+});
+
+describe("SelfReviewSchema", () => {
+  it("parses with defaults", async () => {
+    const { SelfReviewSchema } = await import("./aiHelpers");
+    const result = SelfReviewSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.overall_score).toBe(5);
+      expect(result.data.issues).toEqual([]);
+    }
+  });
+
+  it("rejects scores above 10", async () => {
+    const { SelfReviewSchema } = await import("./aiHelpers");
+    expect(SelfReviewSchema.safeParse({ overall_score: 11 }).success).toBe(false);
+  });
+});
+
+// ─── buildMarkdown ────────────────────────────────────────────────────────────
+
+describe("buildMarkdown (exportHandlerUtils)", () => {
+  it("returns fallback string for null data", async () => {
+    const { buildMarkdown } = await import("./exportHandlerUtils");
+    expect(buildMarkdown(null)).toContain("No project data");
+  });
+
+  it("generates markdown with project name", async () => {
+    const { buildMarkdown } = await import("./exportHandlerUtils");
+    const data = {
+      project: { name: "Test Project", productService: "SaaS", targetCustomer: "SMBs", mainOffer: "Free trial" },
+      research: [], intelligence: null, marketResearch: null, buyerJourney: null,
+      awareness: null, threshold: null, mental: null, skeleton: null,
+      drafts: [], reviews: [], competitor: null,
+    };
+    const result = buildMarkdown(data);
+    expect(result).toContain("Test Project");
+    expect(result).toContain("FunnelIntel OS");
+  });
+});
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;

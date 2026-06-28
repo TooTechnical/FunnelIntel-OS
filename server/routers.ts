@@ -7,14 +7,8 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import * as db from "./db";
 import { stripeRouter } from "./stripeRouter";
-
-// ─── Subscription Guard ────────────────────────────────────────────────────────
-function checkCanGenerate(user: { subscriptionStatus: string; trialEndsAt: Date | null }) {
-  const now = new Date();
-  if (user.subscriptionStatus === "active") return true;
-  if (user.subscriptionStatus === "trial" && user.trialEndsAt && user.trialEndsAt > now) return true;
-  return false;
-}
+import { checkCanGenerate } from "./aiHelpers";
+import { buildMarkdown } from "./exportHandlerUtils";
 
 // ─── Admin Guard ──────────────────────────────────────────────────────────────
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -22,7 +16,7 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   return next({ ctx });
 });
 
-// ─── AI Helper ────────────────────────────────────────────────────────────────
+// ─── AI Helper (thin wrapper for backward compat) ─────────────────────────────
 async function callAI(systemPrompt: string, userPrompt: string) {
   const response = await invokeLLM({
     messages: [
@@ -168,7 +162,7 @@ export const appRouter = router({
       .input(z.object({ projectId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const user = await db.getUserById(ctx.user.id);
-        if (!user || !checkCanGenerate(user)) throw new TRPCError({ code: "FORBIDDEN", message: "Trial expired or no active subscription" });
+        if (!user || !checkCanGenerate(user)) throw new TRPCError({ code: "FORBIDDEN", message: "Trial expired or no active subscription." });
 
         const research = await db.getResearchByProject(input.projectId, ctx.user.id);
         if (research.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "No research sources found" });
@@ -229,7 +223,7 @@ Separate exact customer quotes from AI paraphrases. Mark exact quotes with quota
       .input(z.object({ projectId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const user = await db.getUserById(ctx.user.id);
-        if (!user || !checkCanGenerate(user)) throw new TRPCError({ code: "FORBIDDEN", message: "Trial expired" });
+        if (!user || !checkCanGenerate(user)) throw new TRPCError({ code: "FORBIDDEN", message: "Trial expired or no active subscription." });
 
         const intel = await db.getIntelligenceByProject(input.projectId, ctx.user.id);
         if (!intel) throw new TRPCError({ code: "BAD_REQUEST", message: "Run intelligence extraction first" });
@@ -266,7 +260,7 @@ Return JSON with:
       .input(z.object({ projectId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const user = await db.getUserById(ctx.user.id);
-        if (!user || !checkCanGenerate(user)) throw new TRPCError({ code: "FORBIDDEN", message: "Trial expired" });
+        if (!user || !checkCanGenerate(user)) throw new TRPCError({ code: "FORBIDDEN", message: "Trial expired or no active subscription." });
 
         const intel = await db.getIntelligenceByProject(input.projectId, ctx.user.id);
         const project = await db.getProjectById(input.projectId, ctx.user.id);
@@ -318,7 +312,7 @@ Focus on pre-decision language: what triggered action, what they tried first, wh
       .input(z.object({ projectId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const user = await db.getUserById(ctx.user.id);
-        if (!user || !checkCanGenerate(user)) throw new TRPCError({ code: "FORBIDDEN", message: "Trial expired" });
+        if (!user || !checkCanGenerate(user)) throw new TRPCError({ code: "FORBIDDEN", message: "Trial expired or no active subscription." });
 
         const [project, intel] = await Promise.all([
           db.getProjectById(input.projectId, ctx.user.id),
@@ -360,7 +354,7 @@ Stage names: "Before State", "Trigger Moment", "Search / Discovery", "Questions"
       }))
       .mutation(async ({ ctx, input }) => {
         const user = await db.getUserById(ctx.user.id);
-        if (!user || !checkCanGenerate(user)) throw new TRPCError({ code: "FORBIDDEN", message: "Trial expired" });
+        if (!user || !checkCanGenerate(user)) throw new TRPCError({ code: "FORBIDDEN", message: "Trial expired or no active subscription." });
 
         const funnelMap: Record<string, string> = {
           "unaware_passive": "Disruption Funnel",
@@ -419,7 +413,7 @@ Return JSON with:
       }))
       .mutation(async ({ ctx, input }) => {
         const user = await db.getUserById(ctx.user.id);
-        if (!user || !checkCanGenerate(user)) throw new TRPCError({ code: "FORBIDDEN", message: "Trial expired" });
+        if (!user || !checkCanGenerate(user)) throw new TRPCError({ code: "FORBIDDEN", message: "Trial expired or no active subscription." });
 
         const desireGap = input.requiredDesire - input.currentDesire;
         const certaintyGap = input.requiredCertainty - input.currentCertainty;
@@ -464,7 +458,7 @@ Return JSON with:
       .input(z.object({ projectId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const user = await db.getUserById(ctx.user.id);
-        if (!user || !checkCanGenerate(user)) throw new TRPCError({ code: "FORBIDDEN", message: "Trial expired" });
+        if (!user || !checkCanGenerate(user)) throw new TRPCError({ code: "FORBIDDEN", message: "Trial expired or no active subscription." });
 
         const [project, intel, threshold, awareness] = await Promise.all([
           db.getProjectById(input.projectId, ctx.user.id),
@@ -503,7 +497,7 @@ Example step: { order: 1, step: "Stop scrolling.", threshold: "attention", trigg
       .input(z.object({ projectId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const user = await db.getUserById(ctx.user.id);
-        if (!user || !checkCanGenerate(user)) throw new TRPCError({ code: "FORBIDDEN", message: "Trial expired" });
+        if (!user || !checkCanGenerate(user)) throw new TRPCError({ code: "FORBIDDEN", message: "Trial expired or no active subscription." });
 
         const [project, awareness, threshold, mentalStepsData] = await Promise.all([
           db.getProjectById(input.projectId, ctx.user.id),
@@ -548,7 +542,7 @@ Return JSON with:
       }))
       .mutation(async ({ ctx, input }) => {
         const user = await db.getUserById(ctx.user.id);
-        if (!user || !checkCanGenerate(user)) throw new TRPCError({ code: "FORBIDDEN", message: "Trial expired" });
+        if (!user || !checkCanGenerate(user)) throw new TRPCError({ code: "FORBIDDEN", message: "Trial expired or no active subscription." });
 
         const [project, intel, threshold, mentalStepsData, skeleton] = await Promise.all([
           db.getProjectById(input.projectId, ctx.user.id),
@@ -617,7 +611,7 @@ Return JSON with:
       }))
       .mutation(async ({ ctx, input }) => {
         const user = await db.getUserById(ctx.user.id);
-        if (!user || !checkCanGenerate(user)) throw new TRPCError({ code: "FORBIDDEN", message: "Trial expired" });
+        if (!user || !checkCanGenerate(user)) throw new TRPCError({ code: "FORBIDDEN", message: "Trial expired or no active subscription." });
 
         const [project, intel, threshold] = await Promise.all([
           db.getProjectById(input.projectId, ctx.user.id),
@@ -688,7 +682,7 @@ Return JSON with:
       .input(z.object({ projectId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const user = await db.getUserById(ctx.user.id);
-        if (!user || !checkCanGenerate(user)) throw new TRPCError({ code: "FORBIDDEN", message: "Trial expired" });
+        if (!user || !checkCanGenerate(user)) throw new TRPCError({ code: "FORBIDDEN", message: "Trial expired or no active subscription." });
 
         const review = await db.getCompetitorReviewByProject(input.projectId, ctx.user.id);
         if (!review) throw new TRPCError({ code: "BAD_REQUEST", message: "No competitor data saved" });
@@ -736,6 +730,41 @@ Return JSON with:
       .input(z.object({ projectId: z.number() }))
       .query(async ({ ctx, input }) => {
         return db.getFullProjectData(input.projectId, ctx.user.id);
+      }),
+    generateMarkdown: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const data = await db.getFullProjectData(input.projectId, ctx.user.id);
+        if (!data?.project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        const markdown = buildMarkdown(data);
+        await db.createExportReport({
+          projectId: input.projectId,
+          userId: ctx.user.id,
+          markdownContent: markdown,
+        });
+        await db.updateProject(input.projectId, ctx.user.id, { exportComplete: true, status: "ready_to_launch" });
+        return { markdown };
+      }),
+    generatePdf: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        // PDF generation is handled by the Express route /api/export/:projectId?format=pdf
+        // This tRPC procedure triggers the export and returns the download URL.
+        const data = await db.getFullProjectData(input.projectId, ctx.user.id);
+        if (!data?.project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        const markdown = buildMarkdown(data);
+        await db.createExportReport({
+          projectId: input.projectId,
+          userId: ctx.user.id,
+          markdownContent: markdown,
+        });
+        await db.updateProject(input.projectId, ctx.user.id, { exportComplete: true, status: "ready_to_launch" });
+        return { downloadUrl: `/api/export/${input.projectId}?format=pdf` };
+      }),
+    getLatestReport: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        return db.getLatestExportReport(input.projectId, ctx.user.id);
       }),
     markComplete: protectedProcedure
       .input(z.object({ projectId: z.number() }))

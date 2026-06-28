@@ -6,6 +6,7 @@ import {
   buyerJourneys,
   competitorReviews,
   draftAssets,
+  exportReports,
   funnelSkeletons,
   intelligenceExtracts,
   interviewBuilders,
@@ -433,6 +434,71 @@ export async function upsertCompetitorReview(projectId: number, userId: number, 
   } else {
     await db.insert(competitorReviews).values({ projectId, userId, ...data } as any);
   }
+}
+
+// ─── Draft Asset by ID ───────────────────────────────────────────────────────
+
+export async function getDraftAssetById(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(draftAssets)
+    .where(and(eq(draftAssets.id, id), eq(draftAssets.userId, userId)))
+    .limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+// Alias used in instructions spec
+export const getDraftAssetsByProject = getDraftsByProject;
+export const createDraftAssets = createDraftAsset;
+
+// ─── Self Review by Asset ─────────────────────────────────────────────────────
+
+export async function getSelfReviewByAsset(draftAssetId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(selfReviews)
+    .where(and(eq(selfReviews.draftAssetId, draftAssetId), eq(selfReviews.userId, userId)))
+    .limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+// ─── Export Reports ───────────────────────────────────────────────────────────
+
+export async function createExportReport(data: typeof exportReports.$inferInsert) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(exportReports).values(data);
+  return result[0];
+}
+
+export async function getExportReportsByProject(projectId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(exportReports)
+    .where(and(eq(exportReports.projectId, projectId), eq(exportReports.userId, userId)))
+    .orderBy(desc(exportReports.createdAt));
+}
+
+export async function getLatestExportReport(projectId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(exportReports)
+    .where(and(eq(exportReports.projectId, projectId), eq(exportReports.userId, userId)))
+    .orderBy(desc(exportReports.createdAt))
+    .limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+// ─── Admin helpers ────────────────────────────────────────────────────────────
+
+export const listUsersForAdmin = getAllUsers;
+
+export async function getAdminStats() {
+  const [userStats, projectStats] = await Promise.all([
+    getUserStats(),
+    getProjectStats(),
+  ]);
+  return { users: userStats, projects: projectStats };
 }
 
 // ─── Full Project Data (for export) ──────────────────────────────────────────

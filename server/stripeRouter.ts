@@ -11,7 +11,7 @@ function getStripe(): Stripe {
   if (!_stripe) {
     const key = process.env.STRIPE_SECRET_KEY;
     if (!key) throw new Error("STRIPE_SECRET_KEY is not set. Please add it to your environment variables.");
-    _stripe = new Stripe(key, { apiVersion: "2025-05-28.basil" });
+    _stripe = new Stripe(key, { apiVersion: "2026-06-24.dahlia" });
   }
   return _stripe;
 }
@@ -131,12 +131,19 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         if (!userId) break;
 
         const plan = (sub.metadata?.plan ?? "starter") as PlanKey;
-        const status = sub.status === "active" ? "active" : sub.status === "canceled" ? "expired" : "trial";
+        const status: "active" | "cancelled" | "expired" | "trial" =
+          sub.status === "active" ? "active" :
+          sub.status === "canceled" ? "cancelled" :
+          sub.status === "past_due" ? "active" : "expired";
+
+        const rawEnd = (sub as any).current_period_end ?? sub.items?.data?.[0]?.current_period_end;
+        const periodEnd = rawEnd ? new Date(rawEnd * 1000) : undefined;
 
         await db.updateUserSubscription(userId, {
           stripeSubscriptionId: sub.id,
           subscriptionStatus: status,
           subscriptionPlan: plan,
+          subscriptionCurrentPeriodEnd: periodEnd,
         });
         break;
       }
@@ -147,7 +154,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         if (!userId) break;
 
         await db.updateUserSubscription(userId, {
-          subscriptionStatus: "expired",
+          subscriptionStatus: "cancelled",
         });
         console.log(`[Stripe] Subscription cancelled for user ${userId}`);
         break;
@@ -155,10 +162,11 @@ export async function handleStripeWebhook(req: Request, res: Response) {
 
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice;
-        const customerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;
+        const customerId = typeof invoice.customer === "string" ? invoice.customer : (invoice.customer as any)?.id;
         if (!customerId) break;
-        // Could notify user here
-        console.log(`[Stripe] Payment failed for customer ${customerId}`);
+        console.warn(`[Stripe] Payment failed for customer ${customerId}`);
+        // Status remains active during grace period — Stripe handles dunning.
+        // If subscription is eventually cancelled, customer.subscription.deleted fires.
         break;
       }
 

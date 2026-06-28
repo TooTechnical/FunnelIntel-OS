@@ -8,6 +8,7 @@ import {
   json,
   boolean,
   decimal,
+  index,
 } from "drizzle-orm/mysql-core";
 
 // ─── Users ────────────────────────────────────────────────────────────────────
@@ -348,3 +349,19 @@ export const competitorReviews = mysqlTable("competitor_reviews", {
 });
 
 export type CompetitorReview = typeof competitorReviews.$inferSelect;
+
+// ─── Export Reports ───────────────────────────────────────────────────────────
+
+export const exportReports = mysqlTable("export_reports", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  userId: int("userId").notNull(),
+  markdownContent: text("markdownContent"),
+  pdfKey: varchar("pdfKey", { length: 512 }),
+  pdfUrl: varchar("pdfUrl", { length: 2048 }),
+  generatedAt: timestamp("generatedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ExportReport = typeof exportReports.$inferSelect;
+export type InsertExportReport = typeof exportReports.$inferInsert;
