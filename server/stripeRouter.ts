@@ -5,15 +5,23 @@ import { z } from "zod/v4";
 import * as db from "./db";
 import { PLANS, type PlanKey } from "./stripeProducts";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "", {
-  apiVersion: "2026-06-24.dahlia",
-});
+// ─── Lazy Stripe client (avoids crash when STRIPE_SECRET_KEY is not set) ──────
+let _stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!_stripe) {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) throw new Error("STRIPE_SECRET_KEY is not set. Please add it to your environment variables.");
+    _stripe = new Stripe(key, { apiVersion: "2025-05-28.basil" });
+  }
+  return _stripe;
+}
 
 // ─── tRPC Stripe Router ────────────────────────────────────────────────────────
 export const stripeRouter = router({
   createCheckout: protectedProcedure
     .input(z.object({ plan: z.enum(["starter", "pro", "agency"]), origin: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const stripe = getStripe();
       const user = await db.getUserById(ctx.user.id);
       if (!user) throw new Error("User not found");
 
@@ -53,6 +61,7 @@ export const stripeRouter = router({
   getPortalUrl: protectedProcedure
     .input(z.object({ origin: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const stripe = getStripe();
       const user = await db.getUserById(ctx.user.id);
       if (!user?.stripeCustomerId) throw new Error("No Stripe customer found");
 
@@ -67,9 +76,15 @@ export const stripeRouter = router({
 
 // ─── Stripe Webhook Handler ────────────────────────────────────────────────────
 export async function handleStripeWebhook(req: Request, res: Response) {
-  const sig = req.headers["stripe-signature"] as string;
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET ?? "";
+  if (!process.env.STRIPE_SECRET_KEY) {
+    console.warn("[Stripe Webhook] STRIPE_SECRET_KEY not set — skipping webhook processing");
+    res.json({ received: true, skipped: true });
+    return;
+  }
 
+  const stripe = getStripe();
+  const sig = req.headers["stripe-signature"] as string;
   let event: Stripe.Event;
 
   try {

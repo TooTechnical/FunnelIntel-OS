@@ -19,6 +19,9 @@ import {
   TrendingUp,
   Users,
   Zap,
+  Clock,
+  AlertTriangle,
+  BarChart2,
 } from "lucide-react";
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
@@ -30,6 +33,7 @@ const NAV_ITEMS = [
 const MODULE_ITEMS = [
   { href: "research", icon: BookOpen, label: "1–2. Research Intake", module: "1" },
   { href: "intelligence", icon: Brain, label: "3–4. Intelligence Extract", module: "3" },
+  { href: "market-research", icon: BarChart2, label: "3B. Market Research", module: "3B" },
   { href: "buyer-journey", icon: Network, label: "5. Buyer Journey", module: "5" },
   { href: "awareness", icon: Target, label: "6. Awareness Diagnosis", module: "6" },
   { href: "thresholds", icon: TrendingUp, label: "7. Threshold Gaps", module: "7" },
@@ -46,10 +50,53 @@ interface AppLayoutProps {
   projectId?: string;
 }
 
+function TrialSidebarBanner({ status }: { status: any }) {
+  if (!status) return null;
+  if (status.status === "active") return null;
+
+  const trialDaysLeft = status.trialEndsAt
+    ? Math.max(0, Math.ceil((new Date(status.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : 0;
+
+  if (status.trialActive) {
+    return (
+      <div className="mx-2 mb-2 p-2 rounded border border-neon-cyan/30 bg-neon-cyan/5">
+        <div className="flex items-center gap-1.5 mb-1">
+          <Clock className="w-3 h-3 text-neon-cyan shrink-0" />
+          <span className="text-xs font-display text-neon-cyan tracking-wide">TRIAL</span>
+        </div>
+        <p className="text-xs text-cyber-muted">{trialDaysLeft}d left</p>
+        <Link href="/pricing">
+          <a className="text-xs text-neon-cyan hover:text-neon-pink transition-colors mt-1 block">Upgrade →</a>
+        </Link>
+      </div>
+    );
+  }
+
+  if (status.status === "expired" || (status.status === "trial" && !status.trialActive)) {
+    return (
+      <div className="mx-2 mb-2 p-2 rounded border border-neon-pink/30 bg-neon-pink/5">
+        <div className="flex items-center gap-1.5 mb-1">
+          <AlertTriangle className="w-3 h-3 text-neon-pink shrink-0" />
+          <span className="text-xs font-display text-neon-pink tracking-wide">EXPIRED</span>
+        </div>
+        <Link href="/pricing">
+          <a className="text-xs text-neon-pink hover:text-neon-cyan transition-colors block">Choose a plan →</a>
+        </Link>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 export default function AppLayout({ children }: AppLayoutProps) {
   const { user, loading, isAuthenticated, logout } = useAuth();
   const [location] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { data: subStatus } = trpc.auth.subscriptionStatus.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+  });
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => { logout(); window.location.href = "/"; },
   });
@@ -145,6 +192,40 @@ export default function AppLayout({ children }: AppLayoutProps) {
             </>
           )}
 
+          {/* Module nav collapsed — only icons */}
+          {currentProjectId && !sidebarOpen && (
+            <>
+              {MODULE_ITEMS.map((item) => {
+                const href = `/projects/${currentProjectId}/${item.href}`;
+                const active = location === href;
+                return (
+                  <Link key={href} href={href} className={`flex items-center justify-center px-3 py-2 rounded text-sm transition-all duration-150 ${
+                      active
+                        ? "bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/30"
+                        : "text-cyber-muted hover:text-neon-cyan hover:bg-neon-cyan/5"
+                    }`}>
+                      <item.icon className="w-4 h-4 shrink-0" />
+                  </Link>
+                );
+              })}
+            </>
+          )}
+
+          {/* Settings */}
+          <div className="px-3 pt-4 pb-1">
+            {sidebarOpen && (
+              <div className="text-xs text-cyber-muted font-display tracking-widest uppercase border-b border-cyber pb-1">Account</div>
+            )}
+          </div>
+          <Link href="/settings" className={`flex items-center gap-3 px-3 py-2 rounded text-sm transition-all duration-150 ${
+              location === "/settings"
+                ? "bg-neon-pink/10 text-neon-pink border border-neon-pink/30 box-glow-sm-pink"
+                : "text-cyber-muted hover:text-neon-cyan hover:bg-neon-cyan/5"
+            }`}>
+              <Settings className="w-4 h-4 shrink-0" />
+              {sidebarOpen && <span className="font-display text-xs tracking-wide">Settings &amp; Billing</span>}
+          </Link>
+
           {/* Admin */}
           {isAdmin && (
             <>
@@ -164,6 +245,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
             </>
           )}
         </nav>
+
+        {/* Trial banner */}
+        {sidebarOpen && <TrialSidebarBanner status={subStatus} />}
 
         {/* User footer */}
         <div className="border-t border-cyber p-3">

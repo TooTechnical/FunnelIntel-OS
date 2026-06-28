@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import ProjectOverview from "./pages/ProjectOverview";
 import ResearchIntake from "./pages/ResearchIntake";
 import IntelligenceExtract from "./pages/IntelligenceExtract";
+import MarketResearch from "./pages/MarketResearch";
 import BuyerJourney from "./pages/BuyerJourney";
 import AwarenessDiagnosis from "./pages/AwarenessDiagnosis";
 import ThresholdGap from "./pages/ThresholdGap";
@@ -21,6 +22,9 @@ import ExportReport from "./pages/ExportReport";
 import AdminPanel from "./pages/AdminPanel";
 import Pricing from "./pages/Pricing";
 import TrialExpired from "./pages/TrialExpired";
+import Settings from "./pages/Settings";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 import AppLayout from "./components/AppLayout";
 
 function Router() {
@@ -30,10 +34,15 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/trial-expired" component={TrialExpired} />
+      <Route path="/terms" component={Terms} />
+      <Route path="/privacy" component={Privacy} />
 
       {/* App — protected */}
       <Route path="/dashboard">
         {() => <AppLayout><Dashboard /></AppLayout>}
+      </Route>
+      <Route path="/settings">
+        {() => <AppLayout><Settings /></AppLayout>}
       </Route>
       <Route path="/projects/:id">
         {() => <AppLayout><ProjectOverview /></AppLayout>}
@@ -43,6 +52,9 @@ function Router() {
       </Route>
       <Route path="/projects/:id/intelligence">
         {() => <AppLayout><IntelligenceExtract /></AppLayout>}
+      </Route>
+      <Route path="/projects/:id/market-research">
+        {() => <AppLayout><MarketResearch /></AppLayout>}
       </Route>
       <Route path="/projects/:id/buyer-journey">
         {() => <AppLayout><BuyerJourney /></AppLayout>}

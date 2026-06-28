@@ -406,10 +406,12 @@ export default function Home() {
           <p className="text-xs text-cyber-muted">
             Customer intelligence for funnels that convert.
           </p>
-          <div className="flex gap-4 text-xs text-cyber-muted">
+          <div className="flex gap-4 text-xs text-cyber-muted flex-wrap justify-center">
             <a href="#pricing" className="hover:text-neon-cyan transition-colors">Pricing</a>
             <a href="#features" className="hover:text-neon-cyan transition-colors">Features</a>
             <a href={getLoginUrl()} className="hover:text-neon-pink transition-colors">Login</a>
+            <Link href="/terms" className="hover:text-neon-cyan transition-colors">Terms</Link>
+            <Link href="/privacy" className="hover:text-neon-cyan transition-colors">Privacy</Link>
           </div>
         </div>
       </footer>

@@ -162,9 +162,15 @@ export default function Pricing() {
           </p>
         </div>
 
-        <div className="text-center mt-8">
+        <div className="text-center mt-8 flex flex-wrap gap-4 justify-center">
           <Link href="/">
             <a className="text-xs text-cyber-muted hover:text-neon-cyan transition-colors">← Back to home</a>
+          </Link>
+          <Link href="/terms">
+            <a className="text-xs text-cyber-muted hover:text-neon-cyan transition-colors">Terms of Service</a>
+          </Link>
+          <Link href="/privacy">
+            <a className="text-xs text-cyber-muted hover:text-neon-cyan transition-colors">Privacy Policy</a>
           </Link>
         </div>
       </div>
