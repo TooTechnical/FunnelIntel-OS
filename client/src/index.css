@@ -1,0 +1,342 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap");
+
+@custom-variant dark (&:is(.dark *));
+
+/* ─── Cyberpunk Design Tokens ─────────────────────────────────────────────── */
+:root {
+  /* Core palette */
+  --neon-pink: oklch(0.65 0.35 340);
+  --neon-cyan: oklch(0.80 0.22 195);
+  --neon-purple: oklch(0.55 0.28 290);
+  --neon-yellow: oklch(0.88 0.22 95);
+  --cyber-black: oklch(0.06 0.01 240);
+  --cyber-dark: oklch(0.10 0.015 240);
+  --cyber-surface: oklch(0.13 0.015 240);
+  --cyber-border: oklch(0.22 0.02 240);
+  --cyber-muted: oklch(0.45 0.03 240);
+  --cyber-text: oklch(0.92 0.02 240);
+
+  /* Semantic tokens */
+  --background: var(--cyber-black);
+  --foreground: var(--cyber-text);
+  --card: var(--cyber-surface);
+  --card-foreground: var(--cyber-text);
+  --popover: var(--cyber-dark);
+  --popover-foreground: var(--cyber-text);
+  --primary: var(--neon-pink);
+  --primary-foreground: oklch(0.06 0.01 240);
+  --secondary: var(--neon-cyan);
+  --secondary-foreground: oklch(0.06 0.01 240);
+  --muted: var(--cyber-surface);
+  --muted-foreground: var(--cyber-muted);
+  --accent: var(--neon-purple);
+  --accent-foreground: var(--cyber-text);
+  --destructive: oklch(0.60 0.28 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: var(--cyber-border);
+  --input: var(--cyber-surface);
+  --ring: var(--neon-pink);
+  --radius: 0.25rem;
+
+  /* Glow intensities */
+  --glow-pink: 0 0 8px oklch(0.65 0.35 340 / 0.8), 0 0 20px oklch(0.65 0.35 340 / 0.4), 0 0 40px oklch(0.65 0.35 340 / 0.15);
+  --glow-cyan: 0 0 8px oklch(0.80 0.22 195 / 0.8), 0 0 20px oklch(0.80 0.22 195 / 0.4), 0 0 40px oklch(0.80 0.22 195 / 0.15);
+  --glow-purple: 0 0 8px oklch(0.55 0.28 290 / 0.8), 0 0 20px oklch(0.55 0.28 290 / 0.4);
+  --glow-sm-pink: 0 0 4px oklch(0.65 0.35 340 / 0.6), 0 0 12px oklch(0.65 0.35 340 / 0.25);
+  --glow-sm-cyan: 0 0 4px oklch(0.80 0.22 195 / 0.6), 0 0 12px oklch(0.80 0.22 195 / 0.25);
+
+  /* Fonts */
+  --font-display: "Orbitron", "Inter", sans-serif;
+  --font-body: "Inter", sans-serif;
+
+  /* Sidebar */
+  --sidebar: var(--cyber-dark);
+  --sidebar-foreground: var(--cyber-text);
+  --sidebar-primary: var(--neon-pink);
+  --sidebar-primary-foreground: oklch(0.06 0.01 240);
+  --sidebar-accent: var(--cyber-surface);
+  --sidebar-accent-foreground: var(--cyber-text);
+  --sidebar-border: var(--cyber-border);
+  --sidebar-ring: var(--neon-pink);
+}
+
+/* ─── Base Reset ──────────────────────────────────────────────────────────── */
+@layer base {
+  * {
+    border-color: oklch(0.22 0.02 240);
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-body);
+    background-color: oklch(0.06 0.01 240);
+    color: oklch(0.92 0.02 240);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    letter-spacing: 0.05em;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: oklch(0.10 0.015 240); }
+  ::-webkit-scrollbar-thumb { background: oklch(0.65 0.35 340 / 0.5); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: oklch(0.65 0.35 340 / 0.8); }
+}
+
+/* ─── Cyberpunk Utilities ─────────────────────────────────────────────────── */
+@layer utilities {
+  /* Neon text glows */
+  .text-neon-pink { color: oklch(0.65 0.35 340); text-shadow: var(--glow-sm-pink); }
+  .text-neon-cyan { color: oklch(0.80 0.22 195); text-shadow: var(--glow-sm-cyan); }
+  .text-neon-purple { color: oklch(0.55 0.28 290); }
+  .text-neon-yellow { color: oklch(0.88 0.22 95); }
+
+  /* Heading glow */
+  .glow-pink { text-shadow: var(--glow-pink); }
+  .glow-cyan { text-shadow: var(--glow-cyan); }
+  .glow-sm-pink { text-shadow: var(--glow-sm-pink); }
+  .glow-sm-cyan { text-shadow: var(--glow-sm-cyan); }
+
+  /* Box glows */
+  .box-glow-pink { box-shadow: var(--glow-pink), inset 0 0 0 1px oklch(0.65 0.35 340 / 0.3); }
+  .box-glow-cyan { box-shadow: var(--glow-cyan), inset 0 0 0 1px oklch(0.80 0.22 195 / 0.3); }
+  .box-glow-sm-pink { box-shadow: var(--glow-sm-pink), inset 0 0 0 1px oklch(0.65 0.35 340 / 0.2); }
+  .box-glow-sm-cyan { box-shadow: var(--glow-sm-cyan), inset 0 0 0 1px oklch(0.80 0.22 195 / 0.2); }
+
+  /* Borders */
+  .border-neon-pink { border-color: oklch(0.65 0.35 340 / 0.6); }
+  .border-neon-cyan { border-color: oklch(0.80 0.22 195 / 0.6); }
+  .border-cyber { border-color: oklch(0.22 0.02 240); }
+
+  /* Backgrounds */
+  .bg-cyber-black { background-color: oklch(0.06 0.01 240); }
+  .bg-cyber-dark { background-color: oklch(0.10 0.015 240); }
+  .bg-cyber-surface { background-color: oklch(0.13 0.015 240); }
+  .bg-neon-pink\/10 { background-color: oklch(0.65 0.35 340 / 0.1); }
+  .bg-neon-cyan\/10 { background-color: oklch(0.80 0.22 195 / 0.1); }
+  .bg-neon-pink\/5 { background-color: oklch(0.65 0.35 340 / 0.05); }
+
+  /* Font families */
+  .font-display { font-family: var(--font-display); }
+  .font-body { font-family: var(--font-body); }
+
+  /* Container */
+  .container {
+    width: 100%;
+    max-width: 1280px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  /* Flex defaults */
+  .flex { min-width: 0; min-height: 0; }
+
+  /* Scanline overlay */
+  .scanlines::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      oklch(0 0 0 / 0.04) 2px,
+      oklch(0 0 0 / 0.04) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Gradient text */
+  .gradient-text-cyber {
+    background: linear-gradient(135deg, oklch(0.65 0.35 340), oklch(0.80 0.22 195));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .gradient-text-pink {
+    background: linear-gradient(135deg, oklch(0.75 0.30 340), oklch(0.65 0.35 340));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+/* ─── HUD Corner Brackets ─────────────────────────────────────────────────── */
+.hud-card {
+  position: relative;
+  background: oklch(0.13 0.015 240);
+  border: 1px solid oklch(0.22 0.02 240);
+}
+
+.hud-card::before,
+.hud-card::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: oklch(0.65 0.35 340 / 0.7);
+  border-style: solid;
+}
+
+.hud-card::before {
+  top: -1px;
+  left: -1px;
+  border-width: 2px 0 0 2px;
+}
+
+.hud-card::after {
+  bottom: -1px;
+  right: -1px;
+  border-width: 0 2px 2px 0;
+}
+
+.hud-card-cyan::before,
+.hud-card-cyan::after {
+  border-color: oklch(0.80 0.22 195 / 0.7);
+}
+
+/* ─── Neon Button ─────────────────────────────────────────────────────────── */
+.btn-neon-pink {
+  background: transparent;
+  color: oklch(0.65 0.35 340);
+  border: 1px solid oklch(0.65 0.35 340 / 0.7);
+  box-shadow: var(--glow-sm-pink);
+  font-family: var(--font-display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  transition: all 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.btn-neon-pink:hover {
+  background: oklch(0.65 0.35 340 / 0.15);
+  box-shadow: var(--glow-pink);
+  transform: translateY(-1px);
+}
+
+.btn-neon-pink:active { transform: scale(0.97); }
+
+.btn-neon-cyan {
+  background: transparent;
+  color: oklch(0.80 0.22 195);
+  border: 1px solid oklch(0.80 0.22 195 / 0.7);
+  box-shadow: var(--glow-sm-cyan);
+  font-family: var(--font-display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  transition: all 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.btn-neon-cyan:hover {
+  background: oklch(0.80 0.22 195 / 0.15);
+  box-shadow: var(--glow-cyan);
+  transform: translateY(-1px);
+}
+
+.btn-neon-cyan:active { transform: scale(0.97); }
+
+.btn-neon-solid {
+  background: oklch(0.65 0.35 340);
+  color: oklch(0.06 0.01 240);
+  border: 1px solid oklch(0.65 0.35 340);
+  box-shadow: var(--glow-pink);
+  font-family: var(--font-display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 700;
+  transition: all 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.btn-neon-solid:hover {
+  background: oklch(0.70 0.35 340);
+  box-shadow: var(--glow-pink), 0 4px 20px oklch(0.65 0.35 340 / 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-neon-solid:active { transform: scale(0.97); }
+
+/* ─── Grid / Tech Lines ───────────────────────────────────────────────────── */
+.cyber-grid {
+  background-image:
+    linear-gradient(oklch(0.22 0.02 240 / 0.3) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.22 0.02 240 / 0.3) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.cyber-grid-sm {
+  background-image:
+    linear-gradient(oklch(0.22 0.02 240 / 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.22 0.02 240 / 0.15) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* ─── Progress Steps ──────────────────────────────────────────────────────── */
+.step-complete { color: oklch(0.80 0.22 195); }
+.step-active { color: oklch(0.65 0.35 340); }
+.step-pending { color: oklch(0.45 0.03 240); }
+
+/* ─── Animations ──────────────────────────────────────────────────────────── */
+@keyframes neon-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes scan-line {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+@keyframes flicker {
+  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; }
+  20%, 24%, 55% { opacity: 0.4; }
+}
+
+@keyframes cyber-slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cyber-fade-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-neon-pulse { animation: neon-pulse 2s ease-in-out infinite; }
+.animate-flicker { animation: flicker 4s linear infinite; }
+.animate-cyber-slide-up { animation: cyber-slide-up 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
+.animate-cyber-fade-in { animation: cyber-fade-in 0.3s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .animate-neon-pulse { animation: neon-pulse 2s ease-in-out infinite; }
+}
+
+/* ─── Prose / Markdown ────────────────────────────────────────────────────── */
+.prose-cyber {
+  color: oklch(0.85 0.02 240);
+  line-height: 1.7;
+}
+.prose-cyber strong { color: oklch(0.65 0.35 340); }
+.prose-cyber code {
+  background: oklch(0.13 0.015 240);
+  border: 1px solid oklch(0.22 0.02 240);
+  padding: 0.1em 0.4em;
+  border-radius: 0.2rem;
+  font-size: 0.85em;
+  color: oklch(0.80 0.22 195);
+}

@@ -1,0 +1,158 @@
+import Stripe from "stripe";
+import type { Request, Response } from "express";
+import { router, protectedProcedure } from "./_core/trpc";
+import { z } from "zod/v4";
+import * as db from "./db";
+import { PLANS, type PlanKey } from "./stripeProducts";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "", {
+  apiVersion: "2026-06-24.dahlia",
+});
+
+// ─── tRPC Stripe Router ────────────────────────────────────────────────────────
+export const stripeRouter = router({
+  createCheckout: protectedProcedure
+    .input(z.object({ plan: z.enum(["starter", "pro", "agency"]), origin: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await db.getUserById(ctx.user.id);
+      if (!user) throw new Error("User not found");
+
+      const plan = PLANS[input.plan as PlanKey];
+
+      const session = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        payment_method_types: ["card"],
+        customer_email: user.email ?? undefined,
+        allow_promotion_codes: true,
+        line_items: [
+          {
+            price: plan.priceId,
+            quantity: 1,
+          },
+        ],
+        client_reference_id: ctx.user.id.toString(),
+        metadata: {
+          user_id: ctx.user.id.toString(),
+          plan: input.plan,
+          customer_email: user.email ?? "",
+          customer_name: user.name ?? "",
+        },
+        subscription_data: {
+          metadata: {
+            user_id: ctx.user.id.toString(),
+            plan: input.plan,
+          },
+        },
+        success_url: `${input.origin}/dashboard?checkout=success&plan=${input.plan}`,
+        cancel_url: `${input.origin}/pricing?checkout=cancelled`,
+      });
+
+      return { url: session.url };
+    }),
+
+  getPortalUrl: protectedProcedure
+    .input(z.object({ origin: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await db.getUserById(ctx.user.id);
+      if (!user?.stripeCustomerId) throw new Error("No Stripe customer found");
+
+      const session = await stripe.billingPortal.sessions.create({
+        customer: user.stripeCustomerId,
+        return_url: `${input.origin}/dashboard`,
+      });
+
+      return { url: session.url };
+    }),
+});
+
+// ─── Stripe Webhook Handler ────────────────────────────────────────────────────
+export async function handleStripeWebhook(req: Request, res: Response) {
+  const sig = req.headers["stripe-signature"] as string;
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET ?? "";
+
+  let event: Stripe.Event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+  } catch (err: any) {
+    console.error("[Stripe Webhook] Signature verification failed:", err.message);
+    res.status(400).send(`Webhook Error: ${err.message}`);
+    return;
+  }
+
+  // Test event detection
+  if (event.id.startsWith("evt_test_")) {
+    console.log("[Webhook] Test event detected, returning verification response");
+    res.json({ verified: true });
+    return;
+  }
+
+  console.log(`[Stripe Webhook] Event: ${event.type} | ID: ${event.id}`);
+
+  try {
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const userId = parseInt(session.metadata?.user_id ?? "0");
+        const plan = (session.metadata?.plan ?? "starter") as PlanKey;
+        if (!userId) break;
+
+        const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id;
+        const subscriptionId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
+
+        await db.updateUserSubscription(userId, {
+          stripeCustomerId: customerId ?? undefined,
+          stripeSubscriptionId: subscriptionId ?? undefined,
+          subscriptionStatus: "active",
+          subscriptionPlan: plan,
+        });
+        console.log(`[Stripe] User ${userId} subscribed to ${plan}`);
+        break;
+      }
+
+      case "customer.subscription.updated": {
+        const sub = event.data.object as Stripe.Subscription;
+        const userId = parseInt(sub.metadata?.user_id ?? "0");
+        if (!userId) break;
+
+        const plan = (sub.metadata?.plan ?? "starter") as PlanKey;
+        const status = sub.status === "active" ? "active" : sub.status === "canceled" ? "expired" : "trial";
+
+        await db.updateUserSubscription(userId, {
+          stripeSubscriptionId: sub.id,
+          subscriptionStatus: status,
+          subscriptionPlan: plan,
+        });
+        break;
+      }
+
+      case "customer.subscription.deleted": {
+        const sub = event.data.object as Stripe.Subscription;
+        const userId = parseInt(sub.metadata?.user_id ?? "0");
+        if (!userId) break;
+
+        await db.updateUserSubscription(userId, {
+          subscriptionStatus: "expired",
+        });
+        console.log(`[Stripe] Subscription cancelled for user ${userId}`);
+        break;
+      }
+
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;
+        if (!customerId) break;
+        // Could notify user here
+        console.log(`[Stripe] Payment failed for customer ${customerId}`);
+        break;
+      }
+
+      default:
+        console.log(`[Stripe Webhook] Unhandled event: ${event.type}`);
+    }
+  } catch (err) {
+    console.error("[Stripe Webhook] Processing error:", err);
+  }
+
+  res.json({ received: true });
+}
