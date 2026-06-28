@@ -1,20 +1,50 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";
-import { COOKIE_NAME } from "@shared/const";
+import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import bcrypt from "bcryptjs";
+import { createHash } from "node:crypto";
 import { getSessionCookieOptions } from "./_core/cookies";
+import type { TrpcContext } from "./_core/context";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { sdk } from "./_core/sdk";
 import { invokeLLM } from "./_core/llm";
 import * as db from "./db";
 import { stripeRouter } from "./stripeRouter";
 import { checkCanGenerate } from "./aiHelpers";
 import { buildMarkdown } from "./exportHandlerUtils";
+import type { User } from "../drizzle/schema";
 
 // ─── Admin Guard ──────────────────────────────────────────────────────────────
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
   return next({ ctx });
 });
+
+const authInputSchema = z.object({
+  email: z.string().trim().toLowerCase().email(),
+  password: z.string().min(8),
+});
+
+function getEmailOpenId(email: string) {
+  const digest = createHash("sha256").update(email).digest("hex");
+  return `email:${digest.slice(0, 58)}`;
+}
+
+async function setUserSession(ctx: TrpcContext, openId: string, name: string | null | undefined) {
+  const sessionToken = await sdk.createSessionToken(openId, {
+    name: name || "User",
+    expiresInMs: ONE_YEAR_MS,
+  });
+  const cookieOptions = getSessionCookieOptions(ctx.req);
+  ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+}
+
+function toSafeUser(user: User | null | undefined) {
+  if (!user) return null;
+  const { passwordHash: _passwordHash, ...safeUser } = user;
+  return safeUser;
+}
 
 // ─── AI Helper (thin wrapper for backward compat) ─────────────────────────────
 async function callAI(systemPrompt: string, userPrompt: string) {
@@ -38,8 +68,56 @@ export const appRouter = router({
     me: publicProcedure.query(async (opts) => {
       if (!opts.ctx.user) return null;
       const user = await db.getUserById(opts.ctx.user.id);
-      return user ?? null;
+      return toSafeUser(user);
     }),
+    signup: publicProcedure
+      .input(authInputSchema.extend({
+        name: z.string().trim().min(1).max(120).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const existing = await db.getUserByEmail(input.email);
+        if (existing) {
+          throw new TRPCError({ code: "CONFLICT", message: "An account already exists for that email." });
+        }
+
+        const openId = getEmailOpenId(input.email);
+        const passwordHash = await bcrypt.hash(input.password, 12);
+        await db.upsertUser({
+          openId,
+          name: input.name ?? null,
+          email: input.email,
+          passwordHash,
+          loginMethod: "email",
+          lastSignedIn: new Date(),
+        });
+
+        const user = await db.getUserByOpenId(openId);
+        if (!user) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Unable to create account." });
+
+        await setUserSession(ctx, user.openId, user.name);
+        return toSafeUser(user);
+      }),
+    login: publicProcedure
+      .input(authInputSchema)
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getPasswordUserByEmail(input.email);
+        if (!user?.passwordHash) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password." });
+        }
+
+        const passwordMatches = await bcrypt.compare(input.password, user.passwordHash);
+        if (!passwordMatches) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password." });
+        }
+
+        await db.upsertUser({
+          openId: user.openId,
+          lastSignedIn: new Date(),
+        });
+
+        await setUserSession(ctx, user.openId, user.name);
+        return toSafeUser(await db.getUserByOpenId(user.openId));
+      }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });

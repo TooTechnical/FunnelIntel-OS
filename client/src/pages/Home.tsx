@@ -1,4 +1,4 @@
-import { getLoginUrl } from "@/const";
+import { getLoginUrl, getSignupUrl } from "@/const";
 import {
   ArrowRight,
   BookOpen,
@@ -141,7 +141,7 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <a href={getLoginUrl()} className="text-xs font-display text-cyber-muted hover:text-neon-cyan transition-colors tracking-wide hidden sm:block">LOGIN</a>
             <a
-              href={getLoginUrl()}
+              href={getSignupUrl()}
               className="btn-neon-solid px-4 py-2 rounded text-xs"
             >
               Start Free Trial
@@ -170,7 +170,7 @@ export default function Home() {
               FunnelIntel OS turns customer research, interviews, reviews, and competitor analysis into validated funnels, ads, landing pages, and offers — engineered around <span className="text-neon-pink">desire</span>, <span className="text-neon-cyan">certainty</span>, and <span className="text-neon-purple">trust</span>.
             </p>
             <div className="mt-10 flex flex-wrap gap-4">
-              <a href={getLoginUrl()} className="btn-neon-solid px-8 py-3 rounded text-sm flex items-center gap-2">
+              <a href={getSignupUrl()} className="btn-neon-solid px-8 py-3 rounded text-sm flex items-center gap-2">
                 Start Free 2-Day Trial <ArrowRight className="w-4 h-4" />
               </a>
               <a href="#how-it-works" className="btn-neon-cyan px-8 py-3 rounded text-sm flex items-center gap-2">
@@ -325,7 +325,7 @@ export default function Home() {
                     ))}
                   </ul>
                   <a
-                    href={getLoginUrl()}
+                    href={getSignupUrl()}
                     className={`mt-6 w-full text-center py-3 rounded text-xs font-display tracking-widest uppercase transition-all ${
                       plan.popular ? "btn-neon-solid" : plan.color === "pink" ? "btn-neon-pink" : "btn-neon-cyan"
                     }`}
@@ -386,7 +386,7 @@ export default function Home() {
             Join marketers, agencies, and founders who build funnels from customer intelligence — not instinct.
           </p>
           <div className="mt-10 flex flex-wrap gap-4 justify-center">
-            <a href={getLoginUrl()} className="btn-neon-solid px-10 py-4 rounded text-sm flex items-center gap-2">
+            <a href={getSignupUrl()} className="btn-neon-solid px-10 py-4 rounded text-sm flex items-center gap-2">
               Start Free 2-Day Trial <ArrowRight className="w-4 h-4" />
             </a>
           </div>

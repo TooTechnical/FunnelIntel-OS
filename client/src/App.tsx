@@ -25,6 +25,8 @@ import TrialExpired from "./pages/TrialExpired";
 import Settings from "./pages/Settings";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 import AppLayout from "./components/AppLayout";
 
 function Router() {
@@ -36,6 +38,8 @@ function Router() {
       <Route path="/trial-expired" component={TrialExpired} />
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />
+      <Route path="/login" component={Login} />
+      <Route path="/signup" component={Signup} />
 
       {/* App — protected */}
       <Route path="/dashboard">

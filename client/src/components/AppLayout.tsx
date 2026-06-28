@@ -95,6 +95,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [location] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { data: subStatus } = trpc.auth.subscriptionStatus.useQuery(undefined, {
+    enabled: isAuthenticated,
     refetchOnWindowFocus: false,
   });
   const logoutMutation = trpc.auth.logout.useMutation({

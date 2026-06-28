@@ -1,4 +1,4 @@
-import { getLoginUrl } from "@/const";
+import { getSignupUrl } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
@@ -90,7 +90,7 @@ export default function Pricing() {
 
   const handleSubscribe = (planKey: "starter" | "pro" | "agency") => {
     if (!isAuthenticated) {
-      window.location.href = getLoginUrl();
+      window.location.href = getSignupUrl();
       return;
     }
     checkoutMutation.mutate({ plan: planKey, origin: window.location.origin });

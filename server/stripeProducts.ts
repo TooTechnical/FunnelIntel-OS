@@ -4,7 +4,7 @@
 export const PLANS = {
   starter: {
     name: "Starter",
-    priceId: process.env.STRIPE_PRICE_STARTER ?? "price_starter",
+    priceId: process.env.STRIPE_STARTER_PRICE_ID ?? process.env.STRIPE_PRICE_STARTER ?? "price_starter",
     amount: 4900, // $49/mo
     currency: "usd",
     interval: "month" as const,
@@ -19,7 +19,7 @@ export const PLANS = {
   },
   pro: {
     name: "Pro",
-    priceId: process.env.STRIPE_PRICE_PRO ?? "price_pro",
+    priceId: process.env.STRIPE_PRO_PRICE_ID ?? process.env.STRIPE_PRICE_PRO ?? "price_pro",
     amount: 9700, // $97/mo
     currency: "usd",
     interval: "month" as const,
@@ -37,7 +37,7 @@ export const PLANS = {
   },
   agency: {
     name: "Agency",
-    priceId: process.env.STRIPE_PRICE_AGENCY ?? "price_agency",
+    priceId: process.env.STRIPE_AGENCY_PRICE_ID ?? process.env.STRIPE_PRICE_AGENCY ?? "price_agency",
     amount: 19700, // $197/mo
     currency: "usd",
     interval: "month" as const,
